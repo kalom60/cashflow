@@ -2,6 +2,10 @@ migrate-down:
 	- migrate -database postgres://postgres:secret@localhost:5432/cashflow?sslmode=disable -path internal/constant/query/schemas -verbose down $(N)
 migrate-up:
 	- migrate -database postgres://postgres:secret@localhost:5432/cashflow?sslmode=disable -path internal/constant/query/schemas -verbose up
+migrate-down-test:
+	- migrate -database postgres://postgres:secret@localhost:5433/cashflow?sslmode=disable -path internal/constant/query/schemas -verbose down
+migrate-up-test:
+	- migrate -database postgres://postgres:secret@localhost:5433/cashflow?sslmode=disable -path internal/constant/query/schemas -verbose up
 migrate-create:
 	- migrate create -ext sql -dir internal/constant/query/schemas -tz "UTC" $(name)
 
@@ -26,3 +30,6 @@ down:
 	@echo "Stopping docker compose..."
 	docker-compose -f docker-compose.yaml down
 	@echo "Done!"
+
+test:
+	go test -v $(path) | grep -v '"level"' | grep -v 'Error #'
