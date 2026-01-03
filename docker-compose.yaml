@@ -16,5 +16,22 @@ services:
       timeout: 3s
       retries: 5
 
+  test_db:
+    image: postgres:16-alpine
+    container_name: cashflow_db_test
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_PASSWORD: secret
+      POSTGRES_USER: postgres
+      POSTGRES_DB: cashflow
+    volumes:
+      - ./tests/postgres-test-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cashflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   cashflowData:
