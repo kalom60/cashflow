@@ -17,16 +17,10 @@ func initDB(dbSource string, log logger.Logger) *pgxpool.Pool {
 	)
 
 	switch dbSource {
-	case "onepulse":
+	case "cashflow":
 		config, err = pgxpool.ParseConfig(viper.GetString("db.url"))
 		if err != nil {
-			log.Error(context.Background(), "unable to parse pgxpool config string for onepulse")
-			log.Fatal(context.Background(), err.Error())
-		}
-	case "audit":
-		config, err = pgxpool.ParseConfig(viper.GetString("audit.dbUrl"))
-		if err != nil {
-			log.Error(context.Background(), "unable to parse pgxpool config string for audit")
+			log.Error(context.Background(), "unable to parse pgxpool config string for cashflow")
 			log.Fatal(context.Background(), err.Error())
 		}
 	default:
