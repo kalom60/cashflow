@@ -7,14 +7,15 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
 const createPayment = `-- name: CreatePayment :one
-INSERT INTO payments (reference, amount, currency, status)
-VALUES ($1, $2, $3, $4)
+INSERT INTO payments (reference, amount, currency, status, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $5)
 RETURNING id, reference, amount, currency, status, created_at, updated_at
 `
 
@@ -23,6 +24,7 @@ type CreatePaymentParams struct {
 	Amount    decimal.Decimal
 	Currency  PaymentCurrency
 	Status    PaymentStatus
+	CreatedAt time.Time
 }
 
 func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (Payment, error) {
@@ -31,6 +33,7 @@ func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (P
 		arg.Amount,
 		arg.Currency,
 		arg.Status,
+		arg.CreatedAt,
 	)
 	var i Payment
 	err := row.Scan(
