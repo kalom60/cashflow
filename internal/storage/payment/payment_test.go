@@ -46,6 +46,7 @@ func TestCreatePaymentETB(t *testing.T) {
 	assert.Equal(t, req.Reference, resp.Reference)
 	assert.Equal(t, dto.ETB, resp.Currency)
 	assert.Equal(t, dto.PENDING, resp.Status)
+	assert.Equal(t, req.Amount, resp.Amount)
 
 	paymentIDETB = resp.ID
 }
@@ -64,6 +65,7 @@ func TestCreatePaymentUSD(t *testing.T) {
 	assert.Equal(t, req.Reference, resp.Reference)
 	assert.Equal(t, dto.USD, resp.Currency)
 	assert.Equal(t, dto.PENDING, resp.Status)
+	assert.Equal(t, req.Amount, resp.Amount)
 
 	paymentIDUSD = resp.ID
 }
