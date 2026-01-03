@@ -1,0 +1,13 @@
+db:
+  migration_path: internal/constant/query/schemas
+  migration_path_up: internal/constant/query/schemas/up
+  name: cashflow
+  host: db
+  port: 5435
+  user: postgres
+  password: secret
+  url: postgresql://postgres:secret@db:5436/cashflow?sslmode=disable
+app:
+  host: 0.0.0.0
+  port: 8282
+  timeout: 30s
