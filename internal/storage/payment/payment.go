@@ -3,9 +3,12 @@ package payment
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/kalom60/cashflow/internal/constant/dto"
 	customErrors "github.com/kalom60/cashflow/internal/constant/errors"
@@ -29,7 +32,16 @@ func Init(logger logger.Logger, persistencedb *persistencedb.PersistenceDB) stor
 }
 
 func (ps *paymentStore) CreatePayment(ctx context.Context, payment dto.Payment) (dto.Payment, error) {
-	row, err := ps.persistencedb.Queries.CreatePayment(ctx, db.CreatePaymentParams{
+	tx, err := ps.persistencedb.Pool.Begin(ctx)
+	if err != nil {
+		ps.logger.Named("PaymentStore-CreatePayment-BeginTx").Error(ctx, "failed to start transaction", zap.Error(err))
+		return dto.Payment{}, customErrors.ErrUnableToCreate.New("database transaction failed")
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := ps.persistencedb.Queries.WithTx(tx)
+
+	row, err := qtx.CreatePayment(ctx, db.CreatePaymentParams{
 		Reference: payment.Reference,
 		Amount:    payment.Amount,
 		Currency:  db.PaymentCurrency(payment.Currency),
@@ -37,14 +49,40 @@ func (ps *paymentStore) CreatePayment(ctx context.Context, payment dto.Payment) 
 		CreatedAt: payment.CreatedAt,
 	})
 	if err != nil {
-		ps.logger.Named("Create-Payment-Store").Error(ctx, "failed to create payment", zap.Error(err))
-		err = customErrors.ErrUnableToCreate.New("failed to create payment")
-		return dto.Payment{}, err
+		ps.logger.Named("PaymentStore-CreatePayment-InsertPayment").Error(ctx, "failed to insert payment record", zap.Error(err))
+		return dto.Payment{}, customErrors.ErrUnableToCreate.New("failed to save payment to storage")
 	}
 
 	payment.ID = row.ID
 	payment.CreatedAt = row.CreatedAt
 	payment.UpdatedAt = row.UpdatedAt
+
+	payloadJson, err := json.Marshal(payment)
+	if err != nil {
+		ps.logger.Named("PaymentStore-CreatePayment-Marshal").Error(ctx, "failed to marshal outbox payload", zap.Error(err))
+		return dto.Payment{}, err
+	}
+
+	var jsonbPayload pgtype.JSONB
+	if err := jsonbPayload.Set(payloadJson); err != nil {
+		ps.logger.Named("PaymentStore-CreatePayment-SetJSONB").Error(ctx, "failed to set jsonb payload", zap.Error(err))
+		return dto.Payment{}, err
+	}
+
+	_, err = qtx.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
+		Payload:   jsonbPayload,
+		Status:    db.OutboxStatus(dto.OutboxStatusPending),
+		CreatedAt: time.Now(),
+	})
+	if err != nil {
+		ps.logger.Named("PaymentStore-CreatePayment-InsertOutbox").Error(ctx, "failed to insert outbox event", zap.Error(err))
+		return dto.Payment{}, customErrors.ErrUnableToCreate.New("failed to save outbox event")
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		ps.logger.Named("PaymentStore-CreatePayment-Commit").Error(ctx, "failed to commit transaction", zap.Error(err))
+		return dto.Payment{}, customErrors.ErrUnableToCreate.New("final database commit failed")
+	}
 
 	return payment, nil
 }
@@ -53,13 +91,13 @@ func (ps *paymentStore) GetPaymentByID(ctx context.Context, id uuid.UUID) (dto.P
 	row, err := ps.persistencedb.Queries.GetPaymentByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
-			ps.logger.Named("Get-Payment-By-ID-Store").Error(ctx, "no row found", zap.Any("id", id), zap.Error(err))
-			err = customErrors.ErrResourceNotFound.New("no row found")
-			return dto.Payment{}, err
+			ps.logger.Named("PaymentStore-GetPaymentByID").Error(ctx, "no row found", zap.Any("id", id), zap.Error(err))
+			return dto.Payment{}, customErrors.ErrResourceNotFound.New("no row found")
+
 		}
-		ps.logger.Named("Get-Payment-By-ID-Store").Error(ctx, "failed to get payment by id", zap.Any("id", id), zap.Error(err))
-		err = customErrors.ErrUnableToGet.New("failed to get payment by id")
-		return dto.Payment{}, err
+		ps.logger.Named("PaymentStore-GetPaymentByID").Error(ctx, "failed to get payment by id", zap.Any("id", id), zap.Error(err))
+		return dto.Payment{}, customErrors.ErrUnableToGet.New("failed to get payment by id")
+
 	}
 
 	return dto.Payment{
@@ -78,9 +116,9 @@ func (ps *paymentStore) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, s
 		Status: db.PaymentStatus(status),
 	})
 	if err != nil {
-		ps.logger.Named("Update-Payment-Status-Store").Error(ctx, "failed to update payment status", zap.Any("id", id), zap.Error(err))
-		err = customErrors.ErrUnableToUpdate.New("failed to update payment")
-		return err
+		ps.logger.Named("PaymentStore-UpdatePaymentStatus").Error(ctx, "failed to update payment status", zap.Any("id", id), zap.Error(err))
+		return customErrors.ErrUnableToUpdate.New("failed to update payment")
+
 	}
 
 	return nil
