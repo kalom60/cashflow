@@ -68,7 +68,7 @@ func CleanTables(conn *pgxpool.Pool) {
 	_, err := conn.Exec(
 		ctx,
 		`TRUNCATE TABLE
-			payments
+			payments, outbox_events
 		RESTART IDENTITY CASCADE
 	`)
 	if err != nil {
