@@ -10,8 +10,52 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgtype"
 	"github.com/shopspring/decimal"
 )
+
+type OutboxStatus string
+
+const (
+	OutboxStatusPENDING OutboxStatus = "PENDING"
+	OutboxStatusSENT    OutboxStatus = "SENT"
+	OutboxStatusFAILED  OutboxStatus = "FAILED"
+)
+
+func (e *OutboxStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = OutboxStatus(s)
+	case string:
+		*e = OutboxStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for OutboxStatus: %T", src)
+	}
+	return nil
+}
+
+type NullOutboxStatus struct {
+	OutboxStatus OutboxStatus
+	Valid        bool // Valid is true if OutboxStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullOutboxStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.OutboxStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.OutboxStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullOutboxStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.OutboxStatus), nil
+}
 
 type PaymentCurrency string
 
@@ -96,6 +140,14 @@ func (ns NullPaymentStatus) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.PaymentStatus), nil
+}
+
+type OutboxEvent struct {
+	ID        uuid.UUID
+	Payload   pgtype.JSONB
+	Status    OutboxStatus
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type Payment struct {
