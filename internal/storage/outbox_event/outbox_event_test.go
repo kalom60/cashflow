@@ -71,7 +71,8 @@ func TestCreateOutboxEventUSD(t *testing.T) {
 }
 
 func TestGetPendingOutboxEventsForUpdate(t *testing.T) {
-	resp, err := oeStore.GetPendingOutboxEventsForUpdate(ctx)
+	tx, _ := oeStore.BeginTx(ctx)
+	resp, err := oeStore.GetPendingOutboxEventsForUpdate(ctx, tx)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(resp))
 
@@ -95,47 +96,56 @@ func TestGetPendingOutboxEventsForUpdate(t *testing.T) {
 }
 
 func TestUpdateOutboxStatusETB(t *testing.T) {
-	err := oeStore.UpdateOutboxStatus(ctx, eventIDETB, dto.OutboxStatusSent)
+	tx, _ := oeStore.BeginTx(ctx)
+	err := oeStore.UpdateOutboxStatus(ctx, tx, eventIDETB, dto.OutboxStatusSent)
 	assert.NoError(t, err)
 }
 
 func TestUpdateOutboxStatusUSD(t *testing.T) {
-	err := oeStore.UpdateOutboxStatus(ctx, eventIDUSD, dto.OutboxStatusFailed)
+	tx, _ := oeStore.BeginTx(ctx)
+	err := oeStore.UpdateOutboxStatus(ctx, tx, eventIDUSD, dto.OutboxStatusFailed)
 	assert.NoError(t, err)
 }
 
 func TestDeleteOutboxEventETB(t *testing.T) {
-	err := oeStore.DeleteOutboxEvent(ctx, eventIDETB)
+	tx, _ := oeStore.BeginTx(ctx)
+	err := oeStore.DeleteOutboxEvent(ctx, tx, eventIDETB)
 	assert.NoError(t, err)
 }
 
 func TestDeleteOutboxEventUSD(t *testing.T) {
-	err := oeStore.DeleteOutboxEvent(ctx, eventIDUSD)
+	tx, _ := oeStore.BeginTx(ctx)
+	err := oeStore.DeleteOutboxEvent(ctx, tx, eventIDUSD)
 	assert.NoError(t, err)
 }
 
 func TestUpdateOutboxStatusETBAfterUpdate(t *testing.T) {
-	err := oeStore.UpdateOutboxStatus(ctx, eventIDETB, dto.OutboxStatusSent)
+	tx, _ := oeStore.BeginTx(ctx)
+	err := oeStore.UpdateOutboxStatus(ctx, tx, eventIDETB, dto.OutboxStatusSent)
 	assert.Error(t, err)
 }
 
 func TestUpdateOutboxStatusUSDAfterUpdate(t *testing.T) {
-	err := oeStore.UpdateOutboxStatus(ctx, eventIDUSD, dto.OutboxStatusFailed)
+	tx, _ := oeStore.BeginTx(ctx)
+	err := oeStore.UpdateOutboxStatus(ctx, tx, eventIDUSD, dto.OutboxStatusFailed)
 	assert.Error(t, err)
 }
 
 func TestGetPendingOutboxEventsForUpdateAfterUpdate(t *testing.T) {
-	resp, err := oeStore.GetPendingOutboxEventsForUpdate(ctx)
+	tx, _ := oeStore.BeginTx(ctx)
+	resp, err := oeStore.GetPendingOutboxEventsForUpdate(ctx, tx)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(resp))
 }
 
 func TestDeleteOutboxEventETBAfterDelete(t *testing.T) {
-	err := oeStore.DeleteOutboxEvent(ctx, eventIDETB)
+	tx, _ := oeStore.BeginTx(ctx)
+	err := oeStore.DeleteOutboxEvent(ctx, tx, eventIDETB)
 	assert.Error(t, err)
 }
 
 func TestDeleteOutboxEventUSDAfterDelete(t *testing.T) {
-	err := oeStore.DeleteOutboxEvent(ctx, eventIDUSD)
+	tx, _ := oeStore.BeginTx(ctx)
+	err := oeStore.DeleteOutboxEvent(ctx, tx, eventIDUSD)
 	assert.Error(t, err)
 }

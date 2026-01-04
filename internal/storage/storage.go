@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/kalom60/cashflow/internal/constant/dto"
 )
 
@@ -14,7 +15,9 @@ type Payment interface {
 }
 
 type OutboxEvent interface {
-	GetPendingOutboxEventsForUpdate(ctx context.Context) ([]dto.OutboxEvent, error)
-	UpdateOutboxStatus(ctx context.Context, id uuid.UUID, status dto.OutboxStatus) error
-	DeleteOutboxEvent(ctx context.Context, id uuid.UUID) error
+	BeginTx(ctx context.Context) (pgx.Tx, error)
+
+	GetPendingOutboxEventsForUpdate(ctx context.Context, tx pgx.Tx) ([]dto.OutboxEvent, error)
+	UpdateOutboxStatus(ctx context.Context, tx pgx.Tx, id uuid.UUID, status dto.OutboxStatus) error
+	DeleteOutboxEvent(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
 }
