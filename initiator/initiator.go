@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/kalom60/cashflow/internal/constant/model/persistencedb"
 	"github.com/labstack/echo/v4"
 
 	"github.com/spf13/viper"
@@ -40,10 +41,25 @@ func Initiate() {
 	logger := InitLogger()
 	log.Info("initializing logger completed")
 
+	// initailizing database connection
+	log.Info("initializing database connect")
+	pgxPool := initDB("onepulse", logger)
+	log.Info("database connection initialized")
+
 	// initializing migration
 	logger.Info(ctx, "initializing migration")
 	InitMigration(viper.GetString("db.url"), viper.GetString("db.migration_path"))
 	logger.Info(ctx, "done initializing migration")
+
+	logger.Info(ctx, "initializing persistence layer ")
+	persistenceDB := persistencedb.New(pgxPool, logger)
+	persistence := initPersistence(&persistenceDB, logger)
+	logger.Info(ctx, "done initializing persistence layer")
+	logger.Info(ctx, "initializing client layer")
+
+	logger.Info(ctx, "initializing module layer")
+	_ = initModule(persistence, logger)
+	logger.Info(ctx, "done initializing module layer")
 
 	logger.Info(ctx, "initializing http server")
 	server := echo.New()

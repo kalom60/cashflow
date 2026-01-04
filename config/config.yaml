@@ -18,3 +18,5 @@ app:
   host: 0.0.0.0
   port: 8282
   timeout: 30s
+  limit: 100
+  interval: 2
