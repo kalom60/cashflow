@@ -2,6 +2,7 @@ package initiator
 
 import (
 	"context"
+	"time"
 
 	"github.com/kalom60/cashflow/internal/module"
 	outboxevent "github.com/kalom60/cashflow/internal/module/outbox_event"
@@ -29,7 +30,8 @@ func initModule(
 	paymentModule := payment.Init(log, paymentStorage)
 
 	interval := viper.GetDuration("app.interval")
-	outboxEventModule := outboxevent.Init(log, outboxEventStorage, msgClient, interval)
+	duration := interval * time.Second
+	outboxEventModule := outboxevent.Init(log, outboxEventStorage, msgClient, duration)
 
 	// Start Global Outbox Worker
 	go outboxEventModule.Start(context.Background())

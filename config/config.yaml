@@ -19,7 +19,7 @@ app:
   port: 8282
   timeout: 30s
   limit: 100
-  interval: 2
+  interval: 15
 rabbitmq:
   url: amqp://guest:guest@localhost:5672/
 workerpool:
