@@ -9,9 +9,11 @@ import (
 )
 
 type Payment interface {
+	BeginTx(ctx context.Context) (pgx.Tx, error)
 	CreatePayment(ctx context.Context, payment dto.Payment) (dto.Payment, error)
 	GetPaymentByID(ctx context.Context, id uuid.UUID) (dto.Payment, error)
-	UpdatePaymentStatus(ctx context.Context, id uuid.UUID, status dto.PaymentStatus) error
+	GetPaymentByIDForUpdate(ctx context.Context, tx pgx.Tx, id uuid.UUID) (dto.Payment, error)
+	UpdatePaymentStatusWithTx(ctx context.Context, tx pgx.Tx, id uuid.UUID, status dto.PaymentStatus) error
 }
 
 type OutboxEvent interface {

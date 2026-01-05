@@ -122,3 +122,39 @@ func (ps *paymentStore) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, s
 
 	return nil
 }
+
+func (ps *paymentStore) BeginTx(ctx context.Context) (pgx.Tx, error) {
+	return ps.persistencedb.Pool.Begin(ctx)
+}
+
+func (ps *paymentStore) GetPaymentByIDForUpdate(ctx context.Context, tx pgx.Tx, id uuid.UUID) (dto.Payment, error) {
+	qtx := ps.persistencedb.Queries.WithTx(tx)
+	row, err := qtx.GetPaymentByIDForUpdate(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
+			return dto.Payment{}, customErrors.ErrResourceNotFound.New("payment not found")
+		}
+		return dto.Payment{}, customErrors.ErrUnableToGet.New("failed to get payment for update")
+	}
+
+	return dto.Payment{
+		ID:        row.ID,
+		Reference: row.Reference,
+		Amount:    row.Amount,
+		Currency:  dto.PaymentCurrency(row.Currency),
+		Status:    dto.PaymentStatus(row.Status),
+		CreatedAt: row.CreatedAt,
+	}, nil
+}
+
+func (ps *paymentStore) UpdatePaymentStatusWithTx(ctx context.Context, tx pgx.Tx, id uuid.UUID, status dto.PaymentStatus) error {
+	qtx := ps.persistencedb.Queries.WithTx(tx)
+	_, err := qtx.UpdatePaymentStatus(ctx, db.UpdatePaymentStatusParams{
+		ID:     id,
+		Status: db.PaymentStatus(status),
+	})
+	if err != nil {
+		return customErrors.ErrUnableToUpdate.New("failed to update payment status in tx")
+	}
+	return nil
+}

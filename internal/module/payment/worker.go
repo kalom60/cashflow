@@ -68,6 +68,30 @@ func (pw *PaymentWorker) processMessage(ctx context.Context, msg amqp.Delivery) 
 
 	pw.logger.Info(ctx, "Processing payment message", zap.String("payment_id", paymentID.String()))
 
+	// Start Transaction for row-level locking and status check
+	tx, err := pw.paymentStorage.BeginTx(ctx)
+	if err != nil {
+		pw.logger.Named("PaymentWorker-ProcessMessage-BeginTx").Error(ctx, "failed to begin transaction", zap.Error(err))
+		_ = msg.Nack(false, true)
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	// Lock the row and get current status
+	payment, err := pw.paymentStorage.GetPaymentByIDForUpdate(ctx, tx, paymentID)
+	if err != nil {
+		pw.logger.Named("PaymentWorker-ProcessMessage-Lock").Error(ctx, "failed to lock payment for update", zap.String("payment_id", paymentID.String()), zap.Error(err))
+		_ = msg.Nack(false, true) // Retry
+		return
+	}
+
+	// Idempotency check: only process if PENDING
+	if payment.Status != dto.PENDING {
+		pw.logger.Info(ctx, "Payment already processed, skipping", zap.String("payment_id", paymentID.String()), zap.String("current_status", string(payment.Status)))
+		_ = msg.Ack(false)
+		return
+	}
+
 	// Simulate randomized processing result
 	var status dto.PaymentStatus
 	n, _ := rand.Int(rand.Reader, big.NewInt(100))
@@ -79,9 +103,15 @@ func (pw *PaymentWorker) processMessage(ctx context.Context, msg amqp.Delivery) 
 
 	pw.logger.Info(ctx, "Simulated processing result", zap.String("payment_id", paymentID.String()), zap.String("status", string(status)))
 
-	if err := pw.paymentStorage.UpdatePaymentStatus(ctx, paymentID, status); err != nil {
+	if err := pw.paymentStorage.UpdatePaymentStatusWithTx(ctx, tx, paymentID, status); err != nil {
 		pw.logger.Named("PaymentWorker-ProcessMessage-UpdateStatus").Error(ctx, "failed to update payment status", zap.String("payment_id", paymentID.String()), zap.Error(err))
 		_ = msg.Nack(false, true) // Retry
+		return
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		pw.logger.Named("PaymentWorker-ProcessMessage-Commit").Error(ctx, "failed to commit transaction", zap.Error(err))
+		_ = msg.Nack(false, true)
 		return
 	}
 

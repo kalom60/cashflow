@@ -13,3 +13,9 @@ UPDATE payments
 SET status = $2
 WHERE id = $1
 RETURNING *;
+
+-- name: GetPaymentByIDForUpdate :one
+SELECT *
+FROM payments
+WHERE id = $1
+FOR UPDATE;

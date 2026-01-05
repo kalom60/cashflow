@@ -90,7 +90,8 @@ func TestGetPaymentByNewID(t *testing.T) {
 }
 
 func TestUpdatePaymentETBToSuccess(t *testing.T) {
-	err := store.UpdatePaymentStatus(ctx, paymentIDETB, dto.SUCCESS)
+	tx, _ := store.BeginTx(ctx)
+	err := store.UpdatePaymentStatusWithTx(ctx, tx, paymentIDETB, dto.SUCCESS)
 	assert.NoError(t, err)
 }
 
@@ -102,7 +103,8 @@ func TestGetPaymentByIDETBAfterSuccessUpdate(t *testing.T) {
 }
 
 func TestUpdatePaymentUSDToSuccess(t *testing.T) {
-	err := store.UpdatePaymentStatus(ctx, paymentIDUSD, dto.SUCCESS)
+	tx, _ := store.BeginTx(ctx)
+	err := store.UpdatePaymentStatusWithTx(ctx, tx, paymentIDUSD, dto.SUCCESS)
 	assert.NoError(t, err)
 }
 
@@ -114,7 +116,8 @@ func TestGetPaymentByIDUSDAfterSuccessUpdate(t *testing.T) {
 }
 
 func TestUpdatePaymentETBToFailed(t *testing.T) {
-	err := store.UpdatePaymentStatus(ctx, paymentIDETB, dto.FAILED)
+	tx, _ := store.BeginTx(ctx)
+	err := store.UpdatePaymentStatusWithTx(ctx, tx, paymentIDETB, dto.FAILED)
 	assert.NoError(t, err)
 }
 
@@ -126,7 +129,8 @@ func TestGetPaymentByIDETBAfterFailedUpdate(t *testing.T) {
 }
 
 func TestUpdatePaymentUSDToFailed(t *testing.T) {
-	err := store.UpdatePaymentStatus(ctx, paymentIDUSD, dto.FAILED)
+	tx, _ := store.BeginTx(ctx)
+	err := store.UpdatePaymentStatusWithTx(ctx, tx, paymentIDUSD, dto.FAILED)
 	assert.NoError(t, err)
 }
 
