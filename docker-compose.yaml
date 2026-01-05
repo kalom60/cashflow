@@ -11,7 +11,7 @@ services:
     volumes:
       - cashflowData:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d cashflow"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d cashflow" ]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -19,6 +19,8 @@ services:
   test_db:
     image: postgres:16-alpine
     container_name: cashflow_db_test
+    profiles:
+      - test
     ports:
       - "5433:5432"
     environment:
@@ -28,10 +30,41 @@ services:
     volumes:
       - ./tests/postgres-test-db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d cashflow"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d cashflow" ]
       interval: 5s
       timeout: 3s
       retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: cashflow_rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "check_running" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      target: dev
+    container_name: cashflow_app
+    ports:
+      - "8282:8282"
+    environment:
+      - APPLICATION_DB_URL=postgresql://postgres:secret@db:5432/cashflow?sslmode=disable
+      - APPLICATION_RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: always
 
 volumes:
   cashflowData:

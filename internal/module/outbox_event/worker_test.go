@@ -17,9 +17,24 @@ import (
 	paymentStorage "github.com/kalom60/cashflow/internal/storage/payment"
 	"github.com/kalom60/cashflow/platform/logger"
 	"github.com/kalom60/cashflow/tests/testutils"
+	"github.com/rabbitmq/amqp091-go"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
+
+type mockMessagingClient struct{}
+
+func (m *mockMessagingClient) PublishPayment(ctx context.Context, paymentID string) error {
+	return nil
+}
+
+func (m *mockMessagingClient) ConsumePayments(ctx context.Context) (<-chan amqp091.Delivery, error) {
+	return nil, nil
+}
+
+func (m *mockMessagingClient) Close() error {
+	return nil
+}
 
 var (
 	ctx      context.Context
@@ -28,9 +43,6 @@ var (
 	pModule  module.Payment
 	oeStore  storage.OutboxEvent
 	oeWorker *outboxeventWorker.OutboxEventWorker
-
-	eventIDETB uuid.UUID
-	eventIDUSD uuid.UUID
 )
 
 func TestMain(m *testing.M) {
@@ -42,7 +54,7 @@ func TestMain(m *testing.M) {
 	pModule = paymentModule.Init(log, pStore)
 
 	oeStore = outboxeventStorage.Init(log, &testDB, 100)
-	oeWorker = outboxeventWorker.Init(log, oeStore, 2*time.Second)
+	oeWorker = outboxeventWorker.Init(log, oeStore, &mockMessagingClient{}, 2*time.Second)
 
 	go oeWorker.Start(ctx)
 

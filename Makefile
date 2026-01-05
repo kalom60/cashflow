@@ -31,5 +31,8 @@ down:
 	docker-compose -f docker-compose.yaml down
 	@echo "Done!"
 
+test-env:
+	docker-compose --profile test up -d test_db
+
 test:
 	go test -v $(path) | grep -v '"level"' | grep -v 'Error #'

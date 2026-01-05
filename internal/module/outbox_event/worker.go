@@ -7,19 +7,22 @@ import (
 
 	"github.com/kalom60/cashflow/internal/storage"
 	"github.com/kalom60/cashflow/platform/logger"
+	"github.com/kalom60/cashflow/platform/messaging"
 	"go.uber.org/zap"
 )
 
 type OutboxEventWorker struct {
 	logger             logger.Logger
 	outboxEventStorage storage.OutboxEvent
+	msgClient          messaging.MessagingClient
 	interval           time.Duration
 }
 
-func Init(logger logger.Logger, outboxEventStorage storage.OutboxEvent, interval time.Duration) *OutboxEventWorker {
+func Init(logger logger.Logger, outboxEventStorage storage.OutboxEvent, msgClient messaging.MessagingClient, interval time.Duration) *OutboxEventWorker {
 	return &OutboxEventWorker{
 		logger:             logger,
 		outboxEventStorage: outboxEventStorage,
+		msgClient:          msgClient,
 		interval:           interval,
 	}
 }
@@ -61,8 +64,18 @@ func (w *OutboxEventWorker) processEvents(ctx context.Context) {
 			w.outboxEventStorage.DeleteOutboxEvent(ctx, tx, event.ID)
 			continue
 		}
+		// Handle messaging
+		paymentID, ok := payload["id"].(string)
+		if !ok {
+			w.logger.Named("OutboxEventWorker-ProcessEvents").Error(ctx, "payload missing payment id", zap.Any("event_id", event.ID))
+			w.outboxEventStorage.DeleteOutboxEvent(ctx, tx, event.ID)
+			continue
+		}
 
-		// TODO: handle messaging
+		if err := w.msgClient.PublishPayment(ctx, paymentID); err != nil {
+			w.logger.Named("OutboxEventWorker-ProcessEvents-Publish").Error(ctx, "failed to publish message", zap.Any("payment_id", paymentID), zap.Error(err))
+			return
+		}
 
 		if err := w.outboxEventStorage.DeleteOutboxEvent(ctx, tx, event.ID); err != nil {
 			w.logger.Named("OutboxEventWorker-ProcessEvents-DeleteOutboxEvent").Error(ctx, "failed to delete outbox event", zap.Any("event_id", event.ID), zap.Error(err))

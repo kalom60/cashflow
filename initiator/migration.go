@@ -22,21 +22,42 @@ func InitMigration(dbUrl, schemasFolder string) error {
 	}
 	defer db.Close()
 
-	// Read all subdirectories in the schemas folder
+	// Try to run migrations from the folder directly first
+	fullPath := fmt.Sprintf("file://%s", schemasFolder)
+	driver, err := postgres.WithInstance(db, &postgres.Config{
+		SchemaName: "public",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create migration driver: %w", err)
+	}
+
+	m, err := migrate.NewWithDatabaseInstance(
+		fullPath,
+		viper.GetString("db.name"),
+		driver,
+	)
+	if err == nil {
+		if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+			log.Printf("Migration failed for root folder: %v", err)
+		} else {
+			log.Printf("Successfully applied migrations from %s", schemasFolder)
+			return nil
+		}
+	}
+
+	// Fallback to subdirectories if root folder didn't work (original behavior)
 	schemaDirs, err := os.ReadDir(schemasFolder)
 	if err != nil {
 		return fmt.Errorf("failed to read schemas folder: %w", err)
 	}
 
 	for _, schemaDir := range schemaDirs {
-
 		if !schemaDir.IsDir() {
-			continue // Skip non-directory entries
+			continue
 		}
 
 		schemaPath := filepath.Join(schemasFolder, schemaDir.Name())
 		fullPath := fmt.Sprintf("file://%s", schemaPath)
-		// schemaName := schemaDir.Name()
 
 		driver, err := postgres.WithInstance(db, &postgres.Config{
 			SchemaName: "public",

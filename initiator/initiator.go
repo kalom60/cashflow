@@ -9,7 +9,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/kalom60/cashflow/docs"
 	"github.com/kalom60/cashflow/internal/constant/model/persistencedb"
+	"github.com/kalom60/cashflow/platform/messaging"
 	"github.com/labstack/echo/v4"
 
 	"github.com/spf13/viper"
@@ -18,6 +20,10 @@ import (
 )
 
 func Initiate() {
+	docs.SwaggerInfo.Title = "Cashflow API"
+	docs.SwaggerInfo.Description = "API documentation for Cashflow"
+	docs.SwaggerInfo.Version = "1.0"
+	docs.SwaggerInfo.BasePath = "/"
 
 	ctx := context.Background()
 
@@ -43,7 +49,7 @@ func Initiate() {
 
 	// initailizing database connection
 	log.Info("initializing database connect")
-	pgxPool := initDB("onepulse", logger)
+	pgxPool := initDB("cashflow", logger)
 	log.Info("database connection initialized")
 
 	// initializing migration
@@ -55,16 +61,30 @@ func Initiate() {
 	persistenceDB := persistencedb.New(pgxPool, logger)
 	persistence := initPersistence(&persistenceDB, logger)
 	logger.Info(ctx, "done initializing persistence layer")
-	logger.Info(ctx, "initializing client layer")
+	logger.Info(ctx, "initializing rabbitmq client")
+	rabbitMQURL := viper.GetString("rabbitmq.url")
+	msgClient, err := messaging.NewRabbitMQClient(rabbitMQURL)
+	if err != nil {
+		logger.Fatal(ctx, "failed to initialize RabbitMQ client", zap.Error(err))
+	}
+	logger.Info(ctx, "rabbitmq client initialized")
 
 	logger.Info(ctx, "initializing module layer")
-	_ = initModule(persistence, logger)
+	module := initModule(persistence, msgClient, logger)
 	logger.Info(ctx, "done initializing module layer")
+
+	logger.Info(ctx, "initializing handler layer ")
+	handler := initHandler(module, logger)
+	logger.Info(ctx, "done initializing handler layer")
 
 	logger.Info(ctx, "initializing http server")
 	server := echo.New()
 	echosrv := server.Group("")
 	echosrv.GET("/swagger/*any", echoSwagger.EchoWrapHandler())
+
+	logger.Info(ctx, "initializing route")
+	initRoute(echosrv, handler, logger)
+	logger.Info(ctx, "done initializing route")
 
 	logger.Info(ctx, "done initializing server")
 
@@ -79,6 +99,11 @@ func Initiate() {
 		sigint := make(chan os.Signal, 1)
 		signal.Notify(sigint, syscall.SIGINT, syscall.SIGTERM)
 		<-sigint
+
+		log.Info("Shutting down... closing RabbitMQ client")
+		if err := msgClient.Close(); err != nil {
+			log.Error("failed to close RabbitMQ client", zap.Error(err))
+		}
 
 		log.Fatal("HTTP server Shutdown")
 	}()

@@ -7,6 +7,7 @@ import (
 	outboxevent "github.com/kalom60/cashflow/internal/module/outbox_event"
 	"github.com/kalom60/cashflow/internal/module/payment"
 	"github.com/kalom60/cashflow/platform/logger"
+	"github.com/kalom60/cashflow/platform/messaging"
 	"github.com/spf13/viper"
 )
 
@@ -17,6 +18,7 @@ type Module struct {
 
 func initModule(
 	persistence *Persistance,
+	msgClient messaging.MessagingClient,
 	log logger.Logger,
 ) *Module {
 	paymentStorage := persistence.Payement
@@ -25,10 +27,14 @@ func initModule(
 	paymentModule := payment.Init(log, paymentStorage)
 
 	interval := viper.GetDuration("app.interval")
-	outboxEventModule := outboxevent.Init(log, outboxEventStorage, interval)
+	outboxEventModule := outboxevent.Init(log, outboxEventStorage, msgClient, interval)
 
 	// Start Global Outbox Worker
 	go outboxEventModule.Start(context.Background())
+
+	// Start Payment Status Consumer
+	paymentWorker := payment.NewPaymentWorker(log, paymentStorage, msgClient)
+	paymentWorker.Start(context.Background())
 
 	return &Module{
 		Payment:     paymentModule,

@@ -20,3 +20,5 @@ app:
   timeout: 30s
   limit: 100
   interval: 2
+rabbitmq:
+  url: amqp://guest:guest@localhost:5672/
