@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/payments": {
+        "/api/v1/payments": {
             "post": {
                 "description": "Creates a new payment record and initiates processing via RabbitMQ",
                 "consumes": [
@@ -67,7 +67,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/payments/{id}": {
+        "/api/v1/payments/{id}": {
             "get": {
                 "description": "Retrieves details of a payment by its unique ID",
                 "produces": [
@@ -127,25 +127,12 @@ const docTemplate = `{
     "definitions": {
         "dto.CreatePaymentRequest": {
             "type": "object",
-            "required": [
-                "amount",
-                "currency",
-                "reference"
-            ],
             "properties": {
                 "amount": {
                     "type": "number"
                 },
                 "currency": {
-                    "enum": [
-                        "ETB",
-                        "USD"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/dto.PaymentCurrency"
-                        }
-                    ]
+                    "$ref": "#/definitions/dto.PaymentCurrency"
                 },
                 "reference": {
                     "type": "string"

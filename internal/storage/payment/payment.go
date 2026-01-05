@@ -92,11 +92,10 @@ func (ps *paymentStore) GetPaymentByID(ctx context.Context, id uuid.UUID) (dto.P
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
 			ps.logger.Named("PaymentStore-GetPaymentByID").Error(ctx, "no row found", zap.Any("id", id), zap.Error(err))
-			return dto.Payment{}, customErrors.ErrResourceNotFound.New("no row found")
-
+			return dto.Payment{}, customErrors.ErrResourceNotFound.New("payment not found")
 		}
 		ps.logger.Named("PaymentStore-GetPaymentByID").Error(ctx, "failed to get payment by id", zap.Any("id", id), zap.Error(err))
-		return dto.Payment{}, customErrors.ErrUnableToGet.New("failed to get payment by id")
+		return dto.Payment{}, customErrors.ErrUnableToGet.New("failed to get payment")
 
 	}
 

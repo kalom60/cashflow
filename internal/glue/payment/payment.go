@@ -23,7 +23,7 @@ func RegisterPaymentRoutes(
 		}, {
 			Method:  http.MethodGet,
 			Path:    "/api/v1/payments/:id",
-			Handler: paymentHandler.CreatePayment,
+			Handler: paymentHandler.GetPaymentDetails,
 		},
 	}
 

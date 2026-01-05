@@ -4,17 +4,9 @@ definitions:
       amount:
         type: number
       currency:
-        allOf:
-        - $ref: '#/definitions/dto.PaymentCurrency'
-        enum:
-        - ETB
-        - USD
+        $ref: '#/definitions/dto.PaymentCurrency'
       reference:
         type: string
-    required:
-    - amount
-    - currency
-    - reference
     type: object
   dto.CreatePaymentResponse:
     properties:
@@ -59,7 +51,7 @@ definitions:
 info:
   contact: {}
 paths:
-  /payments:
+  /api/v1/payments:
     post:
       consumes:
       - application/json
@@ -93,7 +85,7 @@ paths:
       summary: Create a new payment
       tags:
       - Payments
-  /payments/{id}:
+  /api/v1/payments/{id}:
     get:
       description: Retrieves details of a payment by its unique ID
       parameters:

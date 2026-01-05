@@ -85,7 +85,7 @@ func (oes *outboxEventStore) UpdateOutboxStatus(ctx context.Context, tx pgx.Tx, 
 
 	if rowsAffected == 0 {
 		oes.logger.Named("OutboxEventStore-UpdateOutboxStatus").Error(ctx, "no row found", zap.Any("id", id), zap.Error(err))
-		return customErrors.ErrResourceNotFound.New("no row found")
+		return customErrors.ErrResourceNotFound.New("event not found")
 	}
 
 	return nil
@@ -107,7 +107,7 @@ func (oes *outboxEventStore) DeleteOutboxEvent(ctx context.Context, tx pgx.Tx, i
 
 	if rowsAffected == 0 {
 		oes.logger.Named("OutboxEventStore-DeleteOutboxEvent").Error(ctx, "no row found", zap.Any("id", id), zap.Error(err))
-		return customErrors.ErrResourceNotFound.New("no row found")
+		return customErrors.ErrResourceNotFound.New("event not found")
 	}
 
 	return nil

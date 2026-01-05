@@ -62,6 +62,7 @@ func Initiate() {
 	persistence := initPersistence(&persistenceDB, logger)
 	logger.Info(ctx, "done initializing persistence layer")
 	logger.Info(ctx, "initializing rabbitmq client")
+
 	rabbitMQURL := viper.GetString("rabbitmq.url")
 	msgClient, err := messaging.NewRabbitMQClient(rabbitMQURL)
 	if err != nil {
