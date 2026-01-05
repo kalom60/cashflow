@@ -12,6 +12,7 @@ import (
 	"github.com/kalom60/cashflow/docs"
 	"github.com/kalom60/cashflow/internal/constant/model/persistencedb"
 	"github.com/kalom60/cashflow/platform/messaging"
+	"github.com/kalom60/cashflow/platform/workerpool"
 	"github.com/labstack/echo/v4"
 
 	"github.com/spf13/viper"
@@ -61,8 +62,13 @@ func Initiate() {
 	persistenceDB := persistencedb.New(pgxPool, logger)
 	persistence := initPersistence(&persistenceDB, logger)
 	logger.Info(ctx, "done initializing persistence layer")
-	logger.Info(ctx, "initializing rabbitmq client")
 
+	logger.Info(ctx, "initializing waorker pool")
+	wp := workerpool.New(viper.GetInt("workerpool.max_workers"), viper.GetInt("workerpool.task_buffer"))
+	wp.Start()
+	logger.Info(ctx, "done initializing worker pool")
+
+	logger.Info(ctx, "initializing rabbitmq client")
 	rabbitMQURL := viper.GetString("rabbitmq.url")
 	msgClient, err := messaging.NewRabbitMQClient(rabbitMQURL)
 	if err != nil {
@@ -71,7 +77,7 @@ func Initiate() {
 	logger.Info(ctx, "rabbitmq client initialized")
 
 	logger.Info(ctx, "initializing module layer")
-	module := initModule(persistence, msgClient, logger)
+	module := initModule(persistence, msgClient, logger, wp)
 	logger.Info(ctx, "done initializing module layer")
 
 	logger.Info(ctx, "initializing handler layer ")

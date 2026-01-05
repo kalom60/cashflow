@@ -32,6 +32,10 @@ var Error = []ErrorType{
 		StatusCode: http.StatusNotFound,
 		Type:       ErrResourceNotFound,
 	},
+	{
+		StatusCode: http.StatusBadRequest,
+		Type:       ErrDuplicateReference,
+	},
 }
 
 // list of error namespaces
@@ -58,4 +62,5 @@ var (
 	ErrHTTPRequestBinding  = errorx.NewType(requestFailed, "binding failure")
 	ErrReadingResponseBody = errorx.NewType(bodyreadFailed, "reading body failure")
 	UnexpectedError        = errorx.NewType(serverError, "invalid value")
+	ErrDuplicateReference  = errorx.NewType(invalidInput, "reference should be unique")
 )

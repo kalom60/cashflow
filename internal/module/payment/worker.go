@@ -11,19 +11,22 @@ import (
 	"github.com/kalom60/cashflow/internal/storage"
 	"github.com/kalom60/cashflow/platform/logger"
 	"github.com/kalom60/cashflow/platform/messaging"
+	"github.com/kalom60/cashflow/platform/workerpool"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
 
 type PaymentWorker struct {
 	logger         logger.Logger
+	pool           *workerpool.WorkerPool
 	paymentStorage storage.Payment
 	msgClient      messaging.MessagingClient
 }
 
-func NewPaymentWorker(logger logger.Logger, paymentStorage storage.Payment, msgClient messaging.MessagingClient) *PaymentWorker {
+func NewPaymentWorker(logger logger.Logger, pool *workerpool.WorkerPool, paymentStorage storage.Payment, msgClient messaging.MessagingClient) *PaymentWorker {
 	return &PaymentWorker{
 		logger:         logger,
+		pool:           pool,
 		paymentStorage: paymentStorage,
 		msgClient:      msgClient,
 	}
@@ -39,7 +42,10 @@ func (pw *PaymentWorker) Start(ctx context.Context) {
 
 	go func() {
 		for msg := range msgs {
-			pw.processMessage(ctx, msg)
+			m := msg
+			pw.pool.Submit(func() {
+				pw.processMessage(ctx, m)
+			})
 		}
 	}()
 }

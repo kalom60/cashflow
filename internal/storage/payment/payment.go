@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/kalom60/cashflow/internal/constant/dto"
@@ -49,6 +50,10 @@ func (ps *paymentStore) CreatePayment(ctx context.Context, payment dto.Payment) 
 		CreatedAt: payment.CreatedAt,
 	})
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return dto.Payment{}, customErrors.ErrDuplicateReference.New("reference should be unique")
+		}
 		ps.logger.Named("PaymentStore-CreatePayment-InsertPayment").Error(ctx, "failed to insert payment record", zap.Error(err))
 		return dto.Payment{}, customErrors.ErrUnableToCreate.New("failed to save payment to storage")
 	}
